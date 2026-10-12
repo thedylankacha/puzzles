@@ -244,7 +244,9 @@ function slotStyle(slot, mirrored, galleryRatio = 2.1) {
   return `left:${left}%;top:${slot.top}%;width:${slot.width}%;height:${height}%;--wood:${slot.wood};`;
 }
 function photoCard(index, classes, wall, alt, style) {
-  return `<div class="frame photo-card ${classes}" style="${style}"><img src="images/wall${wall}-portrait-${index + 1}.jpg" alt="${alt}" loading="eager"></div>`;
+  const filename = `wall${wall}-portrait-${index + 1}.jpg`;
+  const cacheBust = ["wall1-portrait-8.jpg", "wall2-portrait-7.jpg", "wall2-portrait-11.jpg"].includes(filename) ? "?v=2" : "";
+  return `<div class="frame photo-card ${classes}" style="${style}"><img src="images/${filename}${cacheBust}" alt="${alt}" loading="eager"></div>`;
 }
 function renderWall1() {
   const portraits = [
