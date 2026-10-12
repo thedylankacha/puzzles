@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Room — Puzzle Prototype</title>
+<style>
+  :root {
+    --ink: #e9e4d8;
+    --muted: #a8a294;
+    --gold: #c5a76b;
+    --wall: #373a3c;
+    --wall-dark: #242729;
+    --panel: #202325;
+    --line: #6d675a;
+    --success: #8bc49a;
+    --error: #e6a09a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; color: var(--ink);
+    font: 16px/1.45 Georgia, "Times New Roman", serif;
+    background: radial-gradient(ellipse at 50% 0, #665846 0, #352e25 58%, #211d18 100%);
+  }
+  button, input { font: inherit; }
+  .app { width: min(1180px, 100%); margin: 0 auto; padding: 20px clamp(12px, 3vw, 30px) 26px; }
+  header { display:flex; justify-content:space-between; gap:16px; align-items:center; margin-bottom:14px; }
+  .eyebrow { color:var(--gold); text-transform:uppercase; letter-spacing:.2em; font: 11px/1.3 Arial,sans-serif; }
+  h1 { font-size: clamp(23px, 3vw, 34px); font-weight:400; margin:4px 0 0; letter-spacing:.04em; }
+  .help { color:var(--muted); font: 12px Arial,sans-serif; text-align:right; }
+  .scene {
+    position:relative; height: min(66vh, 650px); min-height:440px; overflow:hidden;
+    background:#d9c8ac;
+    border:1px solid #8b7458; box-shadow:0 18px 45px #0006; isolation:isolate;
+  }
+  .ceiling {
+    position:absolute; inset:0 0 auto; height:7%; z-index:-1;
+    background:linear-gradient(180deg,#fffdf8 0 72%,#d3c3a8 73% 80%,#f5eddf 81% 100%);
+  }
+  .floor {
+    position:absolute; inset:auto 0 0; height:22%; z-index:-1;
+    background:repeating-linear-gradient(90deg,#805a3b 0 112px,#503724 113px 116px,#9a704b 117px 224px);
+    border-top:8px solid #eee4d2;
+    box-shadow:inset 0 5px 0 #bda17d;
+  }
+  .wall-surface {
+    position:absolute; inset:7% 0 22%; padding:clamp(14px,3vw,34px);
+    background-color:#d8c4a4;
+    background-image:linear-gradient(115deg,#ffffff20,transparent 48%,#9f846012),repeating-linear-gradient(0deg,transparent 0 58px,#8b74520d 59px,#ffffff12 61px);
+    border-top:3px solid #f3e8d3;
+    border-bottom:10px solid #8d6947;
+    box-shadow:inset 0 -2px 0 #c4a47f;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    transition:opacity .12s ease;
+  }
+  .wall-title {
+    position:absolute; top:10px; left:14px; right:14px; text-align:center;
+    color:#65513b; font:11px Arial,sans-serif; text-transform:uppercase; letter-spacing:.22em;
+  }
+  .wall-content { width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; padding-top:20px; }
+  .wall-surface.photo-wall .wall-title { display:none; }
+  .wall-surface.photo-wall .wall-content { padding-top:0; }
+  .gallery { display:grid; width:100%; height:100%; gap:clamp(8px,1.5vw,18px); align-content:center; justify-content:center; }
+  .apes,.freeman { position:relative; display:block; overflow:visible; }
+  .photo-card { position:absolute; padding:7px; background:var(--wood); box-shadow:0 5px 10px #32251755, inset 0 0 0 1px #ffffff40; }
+  .photo-card img { display:block; width:100%; height:100%; object-fit:cover; border:1px solid #ffffff80; }
+  .wall1-gallery .photo-card.square-frame img { object-fit:contain; background:#e9dfce; }
+  .wall2-gallery .photo-card { border-radius:50%; }
+  .wall2-gallery .photo-card img { border-radius:50%; }
+  .caption { color:#c9c1b0; font:10px Arial,sans-serif; text-align:center; margin-top:5px; }
+  .display-grid { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:clamp(6px,1.5vw,16px); width:100%; align-items:center; }
+  .display { min-width:0; aspect-ratio: .78 / 1; border:6px solid var(--frame-color,#a89a70); background:#1b1e1f; padding:4px; box-shadow:0 5px 12px #0007; display:flex; flex-direction:column; }
+  .display-art { flex:1; min-height:0; display:flex; align-items:center; justify-content:center; text-align:center; padding:4px; font:clamp(8px,1vw,12px) Arial,sans-serif; color:#f2e8d5; background:radial-gradient(circle at 50% 30%,#a5a09a,#373b3a 65%,#181a1a); }
+  .display-art img { display:block; width:100%; height:100%; object-fit:contain; }
+  .display-label { font:9px Arial,sans-serif; text-align:center; color:#d2c8ad; padding-top:5px; }
+  .blank-display { background:#080909; border-color:#c93636; }
+  .blank-display .display-art { background:#080909; }
+  .scene.photo-wall-scene .sideboard { display:block; }
+  .sideboard { display:none; position:absolute; z-index:1; left:34%; bottom:2%; width:32%; height:12%; border:1px solid #50331f; background-color:#70472b; background-image:radial-gradient(circle at 16.5% 54%,#d3a56b 0 3px,transparent 4px),radial-gradient(circle at 50% 54%,#d3a56b 0 3px,transparent 4px),radial-gradient(circle at 83.5% 54%,#d3a56b 0 3px,transparent 4px),linear-gradient(90deg,transparent 0 33%,#4f3220 33.2% 33.8%,transparent 34% 66%,#4f3220 66.2% 66.8%,transparent 67%),linear-gradient(180deg,#8e6139,#5a3924); box-shadow:0 9px 13px #0006,inset 0 1px 0 #c29563; }
+  .sideboard::before { content:""; position:absolute; left:-5px; right:-5px; top:-8px; height:8px; background:linear-gradient(#c09a69,#835b36); border:1px solid #604228; box-shadow:0 2px 3px #0004; }
+  .wall4-banner { width:100%; padding:8px 10px; margin:0 0 20px; text-align:center; background:#9a824f; color:#171715; text-transform:uppercase; letter-spacing:.15em; font:clamp(9px,1.1vw,13px) Arial,sans-serif; }
+  .encoded { max-width:90%; color:#eee2c3; font-size:clamp(18px,3vw,32px); line-height:1.8; letter-spacing:.18em; text-align:center; white-space:pre-line; overflow-wrap:anywhere; }
+  .final-instruction { max-width:80%; color:#eee2c3; font-size:clamp(22px,4vw,42px); line-height:1.5; letter-spacing:.06em; text-align:center; }
+  .controls { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 2px 0; }
+  .turn-controls { display:flex; align-items:center; gap:8px; }
+  .btn {
+    border:1px solid #7e735a; color:var(--ink); background:#26292a; padding:10px 14px; cursor:pointer;
+    transition:background .15s, transform .15s; min-width:46px;
+  }
+  .btn:hover { background:#45423a; }
+  .btn:active { transform:translateY(1px); }
+  .wall-indicator { min-width:125px; text-align:center; color:#d3c5a3; font:12px Arial,sans-serif; }
+  .password-form { display:flex; align-items:center; gap:8px; }
+  input[type=password], input[type=text] {
+    width:min(230px,36vw); background:#161819; color:#f4eddd; border:1px solid #7c7564; padding:10px 12px; outline:none;
+  }
+  input:focus { border-color:var(--gold); box-shadow:0 0 0 2px #c5a76b22; }
+  .status { min-height:22px; margin-top:9px; text-align:right; font:12px Arial,sans-serif; color:var(--muted); }
+  .status.good { color:var(--success); } .status.bad { color:var(--error); }
+  .footer { margin-top:14px; color:#8e8a80; font:11px/1.5 Arial,sans-serif; display:flex; justify-content:space-between; gap:12px; }
+  @media (max-width:650px) {
+    .wall1-gallery .photo-card,.wall2-gallery .photo-card { padding:4px; }
+    .wall1-gallery .photo-card.square-frame,.wall2-gallery .photo-card.circle-frame { padding:6px; }
+    .app { padding-top:12px; }
+    header { align-items:flex-start; }
+    .help { max-width:130px; }
+    .scene { min-height:460px; height:64vh; }
+    .wall-surface { inset:7% 0 22%; padding:12px; }
+    .apes,.freeman { gap:7px; }
+    .frame { padding:3px; }
+    .display { border-width:3px; padding:2px; }
+    .display-label { font-size:7px; }
+    .controls { align-items:stretch; flex-direction:column; }
+    .turn-controls { justify-content:center; }
+    .password-form { justify-content:center; }
+    .status { text-align:center; }
+    .footer { flex-direction:column; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div><div class="eyebrow">An experimental puzzle</div><h1>The Room</h1></div>
+    <div class="help">Use ← and → to turn<br>Press the arrows below on mobile</div>
+  </header>
+
+  <main>
+    <section class="scene" aria-label="Puzzle room">
+      <div class="ceiling"></div>
+      <div class="floor"></div>
+      <div class="wall-surface" id="wallSurface">
+        <div class="wall-title" id="wallTitle">Wall 1 — The Gallery</div>
+        <div class="wall-content" id="wallContent"></div>
+      </div>
+      <div class="sideboard" aria-hidden="true"></div>
+    </section>
+    <div class="controls">
+      <div class="turn-controls">
+        <button class="btn" id="leftBtn" aria-label="Turn left">←</button>
+        <div class="wall-indicator" id="wallIndicator">WALL 1 OF 4</div>
+        <button class="btn" id="rightBtn" aria-label="Turn right">→</button>
+      </div>
+      <form class="password-form" id="passwordForm">
+        <input id="passwordInput" type="password" placeholder="Enter password" autocomplete="off" aria-label="Enter password">
+        <button class="btn" type="submit">Unlock</button>
+      </form>
+    </div>
+    <div class="status" id="status" role="status" aria-live="polite">The room is quiet. Look around.</div>
+  </main>
+  <div class="footer">
+    <span>Prototype 0.1</span>
+    <span>Tip: the wall changes when you turn left or right.</span>
+  </div>
+</div>
+
+<script>
+/*
+  EASY CUSTOMISATION
+  1) Replace the local portrait files used by renderWall1/renderWall2; Wall 3 display artwork is editable below.
+  2) Replace WALL4_BANNER and WALL4_MESSAGE when your messages are ready.
+  3) Change ACCEPTED_PASSWORD to your final answer.
+*/
+const ACCEPTED_PASSWORD = "Mellon";
+const WALL4_BANNER = "Use ⬛ to find ⚫";
+const WALL4_MESSAGE = "STATEN ISLAND\nSPEAK FRIEND AND ENTER";
+const WALL4_SHIFT = 1 + Math.floor(Math.random() * 25);
+const ENCODED_WALL4_MESSAGE = caesarShift(WALL4_MESSAGE, WALL4_SHIFT);
+
+const WALL1_SLOTS = [
+  { left: 1, top: 8 }, { left: 17, top: 4 }, { left: 33, top: 12 },
+  { left: 49, top: 3 }, { left: 65, top: 10 }, { left: 81, top: 6 },
+  { left: 8, top: 57 }, { left: 26, top: 63 }, { left: 44, top: 54 },
+  { left: 62, top: 61 }, { left: 80, top: 56 }
+];
+const WALL2_SLOTS = [
+  { left: 1, top: 4, width: 12, height: 31, wood: "linear-gradient(135deg,#814c32,#c59b68 50%,#68412d)" },
+  { left: 17, top: 17, width: 15, height: 42, wood: "linear-gradient(135deg,#ba9c62,#e0c88e 50%,#967649)" },
+  { left: 35, top: 3, width: 14, height: 32, wood: "linear-gradient(135deg,#42573d,#80945d 50%,#293e31)" },
+  { left: 51, top: 21, width: 15, square: true, circle: true, wood: "linear-gradient(135deg,#b49a62,#6c5b3c 48%,#dac890)" },
+  { left: 75, top: 1, width: 13, height: 34, wood: "linear-gradient(135deg,#764c39,#b27c54 50%,#55372d)" },
+  { left: 1, top: 57, width: 15, height: 38, wood: "linear-gradient(135deg,#83774f,#c5b47e 50%,#655638)" },
+  { left: 31, top: 60, width: 12, height: 30, wood: "linear-gradient(135deg,#6e4939,#ab7955 50%,#4d382d)" },
+  { left: 77, top: 54, width: 16, height: 43, wood: "linear-gradient(135deg,#8d754b,#c7ab72 50%,#5b4b34)" },
+  { left: 18, top: 65, width: 11, height: 26, wood: "linear-gradient(135deg,#714732,#bd8a54 50%,#5d3d2a)" },
+  { left: 47, top: 61, width: 11, height: 28, wood: "linear-gradient(135deg,#71644a,#b6a279 50%,#514632)" },
+  { left: 60, top: 60, width: 14, height: 34, wood: "linear-gradient(135deg,#68443a,#ad7660 50%,#49352e)" }
+];
+const WALL1_FRAME_FINISHES = [
+  "linear-gradient(135deg,#d7c18f,#86673e 44%,#e4d3a8)",
+  "linear-gradient(135deg,#70482c,#c08b4f 45%,#60402b)",
+  "linear-gradient(120deg,#b5a987,#6f654c 45%,#d4c5a2)",
+  "linear-gradient(145deg,#49372a,#a37a52 50%,#4a3629)",
+  "linear-gradient(120deg,#9b4e34,#d89a62 50%,#7e3d2c)",
+  "linear-gradient(135deg,#a99b7e,#d4c5a2 50%,#75694e)",
+  "linear-gradient(130deg,#3c3028,#80583a 50%,#362b24)",
+  "linear-gradient(130deg,#85704b,#d0b87f 50%,#6d5839)",
+  "linear-gradient(135deg,#61412d,#ad7748 50%,#523728)",
+  "linear-gradient(125deg,#9a7548,#c6a875 48%,#725335)",
+  "linear-gradient(135deg,#4c3829,#956b43 50%,#3c2e23)"
+];
+const WALL1_MIRRORED = Math.random() < 0.5;
+const WALL2_OVAL_ORDER = shuffle([0, 1, 2, 4, 5, 6, 7, 8, 9, 10]);
+const WALL2_MIRRORED = Math.random() < 0.5;
+const WALL3_SOURCE_ITEMS = [
+  { src: "images/wall3-cocktail.jpg", alt: "Manhattan cocktail" },
+  { src: "images/wall3-beckham.jpg", alt: "Brooklyn Beckham" },
+  { src: "images/wall3-poker.jpg", alt: "Playing cards" },
+  { src: "images/wall3-elvira.jpg", alt: "Elvira Chaudoir" }
+];
+const WALL3_COLORS = ["#2873b8", "#3b8a4c", "#d8b42d", "#dc762c"];
+const WALL3_COLOR_ASSIGNMENT = shuffle(WALL3_COLORS);
+const WALL3_PAGE_LAYOUT = shuffle(
+  shuffle(WALL3_SOURCE_ITEMS).map((item, index) => ({ ...item, color: WALL3_COLOR_ASSIGNMENT[index] }))
+  .concat({ blank: true, color: "#c93636" })
+);
+
+const walls = [
+  { title: "Wall 1 — The Gallery", render: renderWall1 },
+  { title: "Wall 2 — Familiar Faces", render: renderWall2 },
+  { title: "Wall 3 — Five Displays", render: renderWall3 },
+  { title: "Wall 4 — The Message", render: renderWall4 },
+  { title: "Wall 5 — The Puzzlemaster", render: renderWall5 }
+];
+let currentWall = 0;
+let wall5Unlocked = false;
+
+function card(label, classes = "", caption = "") {
+  return `<div class="frame ${classes}"><div class="art"><span>${label}</span></div></div>${caption ? `<div class="caption">${caption}</div>` : ""}`;
+}
+
+function shuffle(items) {
+  const result = [...items];
+  for (let index = result.length - 1; index > 0; index--) {
+    const other = Math.floor(Math.random() * (index + 1));
+    [result[index], result[other]] = [result[other], result[index]];
+  }
+  return result;
+}
+function slotStyle(slot, mirrored, galleryRatio = 2.1) {
+  const left = mirrored ? 100 - slot.left - slot.width : slot.left;
+  const ratio = slot.galleryRatio || galleryRatio;
+  const height = slot.ratio ? (slot.width * ratio / slot.ratio).toFixed(2) : slot.square ? (slot.width * ratio).toFixed(2) : slot.height;
+  return `left:${left}%;top:${slot.top}%;width:${slot.width}%;height:${height}%;--wood:${slot.wood};`;
+}
+function photoCard(index, classes, wall, alt, style) {
+  return `<div class="frame photo-card ${classes}" style="${style}"><img src="images/wall${wall}-portrait-${index + 1}.jpg" alt="${alt}" loading="eager"></div>`;
+}
+function renderWall1() {
+  const portraits = [
+    { index:0, classes:"square-frame", alt:"Caesar from Rise of the Planet of the Apes", width:12, ratio:1, wood:WALL1_FRAME_FINISHES[0] },
+    { index:1, alt:"Curious George", width:9.5, ratio:236/360, wood:WALL1_FRAME_FINISHES[1] },
+    { index:2, alt:"Donkey Kong", width:12, ratio:511/426, wood:WALL1_FRAME_FINISHES[2] },
+    { index:3, alt:"King Louie", width:11, ratio:360/340, wood:WALL1_FRAME_FINISHES[3] },
+    { index:4, alt:"Boots", width:10.5, ratio:1, wood:WALL1_FRAME_FINISHES[4] },
+    { index:5, alt:"King Louie", width:9.5, ratio:364/549, wood:WALL1_FRAME_FINISHES[5] },
+    { index:6, alt:"Rafiki", width:9, ratio:381/524, wood:WALL1_FRAME_FINISHES[6] },
+    { index:7, alt:"Mandrill portrait", width:10, ratio:1, wood:WALL1_FRAME_FINISHES[7] },
+    { index:8, alt:"Pirates of the Caribbean monkey", width:14, ratio:738/411, wood:WALL1_FRAME_FINISHES[8] },
+    { index:9, alt:"Monkey in a film scene", width:15, ratio:428/217, wood:WALL1_FRAME_FINISHES[9] },
+    { index:10, alt:"Chimpanzee at home", width:13, ratio:666/460, wood:WALL1_FRAME_FINISHES[10] }
+  ];
+  const arranged = shuffle(portraits);
+  const content = document.getElementById("wallContent");
+  const galleryRatio = content.clientWidth / content.clientHeight || 2.1;
+  return `<div class="gallery apes wall1-gallery">${arranged.map((portrait, slotIndex) => {
+    const frameStyle = { ...WALL1_SLOTS[slotIndex], width:portrait.width, ratio:portrait.ratio, galleryRatio, square:portrait.classes === "square-frame", wood:portrait.wood };
+    return photoCard(portrait.index, portrait.classes || "", 1, portrait.alt, slotStyle(frameStyle, WALL1_MIRRORED));
+  }).join("")}</div>`;
+}
+function renderWall2() {
+  let ovalIndex = 0;
+  const content = document.getElementById("wallContent");
+  const galleryRatio = content.clientWidth / content.clientHeight || 2.1;
+  return `<div class="gallery freeman wall2-gallery">${WALL2_SLOTS.map(slot => {
+    const isRed = slot.circle;
+    const portraitIndex = isRed ? 3 : WALL2_OVAL_ORDER[ovalIndex++];
+    const alt = isRed ? "Morgan Freeman as Red in The Shawshank Redemption" : "Portrait photograph";
+    const classes = isRed ? "circle-frame red-feature" : "oval-frame";
+    return photoCard(portraitIndex, classes, 2, alt, slotStyle(slot, WALL2_MIRRORED, galleryRatio));
+  }).join("")}</div>`;
+}
+function renderWall3() {
+  return `<div class="display-grid">${WALL3_PAGE_LAYOUT.map(item =>
+    `<div class="display ${item.blank ? "blank-display" : ""}" style="--frame-color:${item.color};">
+      <div class="display-art">${item.src ? `<img src="${item.src}" alt="${item.alt}" loading="eager">` : ""}</div>
+    </div>`
+  ).join("")}</div>`;
+}
+function renderWall4() {
+  return `<div class="wall4-banner">${WALL4_BANNER}</div>
+    <div class="encoded">${ENCODED_WALL4_MESSAGE}</div>`;
+}
+function renderWall5() {
+  return `<div class="final-instruction">The Puzzlemaster will see you now.</div>`;
+}
+function caesarShift(text, shift) {
+  return [...text].map(character => {
+    const code = character.charCodeAt(0);
+    return code >= 65 && code <= 90
+      ? String.fromCharCode(65 + (code - 65 + shift) % 26)
+      : character;
+  }).join("");
+}
+function showWall(index) {
+  const availableWalls = wall5Unlocked ? walls.length : walls.length - 1;
+  currentWall = (index + availableWalls) % availableWalls;
+  const surface = document.getElementById("wallSurface");
+  surface.classList.toggle("photo-wall", currentWall < 2);
+  document.querySelector(".scene").classList.toggle("photo-wall-scene", currentWall < 2);
+  surface.style.opacity = "0.35";
+  window.setTimeout(() => {
+    document.getElementById("wallTitle").textContent = walls[currentWall].title;
+    document.getElementById("wallContent").innerHTML = walls[currentWall].render();
+    document.getElementById("wallIndicator").textContent = `WALL ${currentWall + 1} OF ${availableWalls}`;
+    surface.style.opacity = "1";
+  }, 70);
+}
+function turnLeft() { showWall(currentWall - 1); }
+function turnRight() { showWall(currentWall + 1); }
+
+document.getElementById("leftBtn").addEventListener("click", turnLeft);
+document.getElementById("rightBtn").addEventListener("click", turnRight);
+document.addEventListener("keydown", event => {
+  if (event.key === "ArrowLeft") { event.preventDefault(); turnLeft(); }
+  if (event.key === "ArrowRight") { event.preventDefault(); turnRight(); }
+});
+document.getElementById("passwordForm").addEventListener("submit", event => {
+  event.preventDefault();
+  const attempt = document.getElementById("passwordInput").value.trim();
+  const status = document.getElementById("status");
+  if (attempt.toLowerCase() === ACCEPTED_PASSWORD.trim().toLowerCase()) {
+    status.textContent = "Correct password.";
+    status.className = "status good";
+    wall5Unlocked = true;
+    showWall(4);
+  } else {
+    status.textContent = "That password doesn't seem right. Keep looking.";
+    status.className = "status bad";
+  }
+});
+showWall(0);
+</script>
+</body>
+</html>
